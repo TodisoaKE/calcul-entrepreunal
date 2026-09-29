@@ -1,0 +1,126 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="#accueil" aria-label="Cap Pilotage, accueil">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span>cap<span class="brand-light">pilotage</span></span>
+    </a>
+    <nav class="top-nav" aria-label="Navigation principale">
+      <a class="nav-active" href="#simulateur">Simulateur</a>
+      <a href="#reperes">Comprendre les résultats</a>
+    </nav>
+    <button class="reset-button" type="button" (click)="reset()">
+      <span aria-hidden="true">↺</span> Réinitialiser
+    </button>
+  </header>
+
+  <main id="accueil">
+    <section class="intro" aria-labelledby="page-title">
+      <div class="intro-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> VOTRE ACTIVITÉ, VOS REPÈRES</p>
+        <h1 id="page-title">Donnez un cap<br />à vos chiffres.</h1>
+        <p class="intro-text">Visualisez ce qu’il faut facturer pour vous rémunérer, ou estimez ce qu’il vous restera avec votre chiffre d’affaires actuel.</p>
+      </div>
+      <div class="intro-aside" aria-label="Période de projection">
+        <span class="aside-label">HORIZON</span>
+        <span class="aside-value">Mensuel <span aria-hidden="true">↗</span></span>
+        <span class="aside-note">Projection annualisée sur 12 mois</span>
+      </div>
+    </section>
+
+    <section class="mode-switch" aria-label="Choisir le type de simulation">
+      <button type="button" [class.mode-active]="mode() === 'target'" [attr.aria-pressed]="mode() === 'target'" (click)="setMode('target')">
+        <span class="mode-number">01</span>
+        <span class="mode-copy"><strong>Partir de mon objectif</strong><small>Quel chiffre d’affaires viser ?</small></span>
+        <span class="mode-arrow" aria-hidden="true">↗</span>
+      </button>
+      <button type="button" [class.mode-active]="mode() === 'forecast'" [attr.aria-pressed]="mode() === 'forecast'" (click)="setMode('forecast')">
+        <span class="mode-number">02</span>
+        <span class="mode-copy"><strong>Partir de mon chiffre d’affaires</strong><small>Quel revenu puis-je dégager ?</small></span>
+        <span class="mode-arrow" aria-hidden="true">↗</span>
+      </button>
+    </section>
+
+    <section class="workspace" id="simulateur" aria-label="Simulateur de revenu">
+      <div class="assumptions">
+        <div class="section-heading">
+          <div><span class="section-index">VOTRE SIMULATION</span><h2>Les hypothèses</h2></div>
+          <span class="live-tag"><span></span> EN DIRECT</span>
+        </div>
+        <div class="field-list">
+          @if (mode() === 'target') {
+            <label class="field-row" for="target-net">
+              <span class="field-copy"><strong>Revenu net souhaité</strong><small>Après frais et cotisations</small></span>
+              <span class="input-wrap"><input id="target-net" type="number" min="0" step="100" [value]="targetNet()" (input)="updateInput('targetNet', $event)" inputmode="decimal" /><span>€ / mois</span></span>
+            </label>
+          } @else {
+            <label class="field-row" for="monthly-turnover">
+              <span class="field-copy"><strong>Chiffre d’affaires prévu</strong><small>Hors TVA, encaissé par mois</small></span>
+              <span class="input-wrap"><input id="monthly-turnover" type="number" min="0" step="100" [value]="monthlyTurnover()" (input)="updateInput('monthlyTurnover', $event)" inputmode="decimal" /><span>€ / mois</span></span>
+            </label>
+          }
+          <label class="field-row" for="fixed-costs">
+            <span class="field-copy"><strong>Frais fixes</strong><small>Loyer, assurances, outils…</small></span>
+            <span class="input-wrap"><input id="fixed-costs" type="number" min="0" step="50" [value]="fixedCosts()" (input)="updateInput('fixedCosts', $event)" inputmode="decimal" /><span>€ / mois</span></span>
+          </label>
+          <div class="field-row rate-row">
+            <label class="field-copy" for="variable-rate"><strong>Frais variables</strong><small>Achats, commissions, livraison…</small></label>
+            <span class="input-wrap rate-input"><input id="variable-rate" type="number" min="0" max="80" step="1" [value]="variableRate()" (input)="updateInput('variableRate', $event)" inputmode="decimal" /><span>% du CA</span></span>
+          </div>
+          <div class="field-row rate-row">
+            <label class="field-copy" for="social-rate"><strong>Cotisations estimées</strong><small>À ajuster selon votre statut</small></label>
+            <span class="input-wrap rate-input"><input id="social-rate" type="number" min="0" max="80" step="1" [value]="socialRate()" (input)="updateInput('socialRate', $event)" inputmode="decimal" /><span>% du CA</span></span>
+          </div>
+          <div class="reserve-control">
+            <div class="reserve-label"><label for="reserve-months"><strong>Coussin de sécurité</strong><small>Frais fixes + revenu visé à mettre de côté</small></label><output for="reserve-months">{{ reserveMonths() }} mois</output></div>
+            <input id="reserve-months" class="range-input" type="range" min="1" max="12" step="1" [value]="reserveMonths()" (input)="updateInput('reserveMonths', $event)" [style.--range-progress.%]="((reserveMonths() - 1) / 11) * 100" />
+            <div class="range-hints"><span>1 mois</span><span>12 mois</span></div>
+          </div>
+        </div>
+        <div class="assumption-note"><span class="note-mark" aria-hidden="true">i</span><p>Les taux sont des estimations : adaptez-les à votre activité et à votre régime. La TVA et l’impôt sur le revenu ne sont pas inclus.</p></div>
+      </div>
+
+      <aside class="results" aria-label="Résultats de la simulation" aria-live="polite" aria-atomic="true">
+        <div class="result-topline"><span class="result-kicker">{{ mode() === 'target' ? 'CHIFFRE D’AFFAIRES À VISER' : 'REVENU NET ESTIMÉ' }}</span><span class="result-period">PAR MOIS <span aria-hidden="true">↗</span></span></div>
+        <p class="result-number">{{ formatEuro(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</p>
+        <p class="result-caption">{{ mode() === 'target' ? 'pour atteindre votre objectif de revenu net' : 'après frais fixes, frais variables et cotisations' }}</p>
+        @if (variableRate() + socialRate() >= 95) {
+          <p class="warning-message" role="status">Attention : vos taux de charges laissent très peu de marge pour couvrir vos frais fixes.</p>
+        }
+        <div class="result-divider"></div>
+        <div class="metric-pair">
+          <div><span>Seuil de rentabilité</span><strong>{{ formatEuro(metrics().breakEven) }}<small> / mois</small></strong></div>
+          <div><span>Revenu net estimé</span><strong>{{ formatEuro(metrics().netIncome) }}<small> / mois</small></strong></div>
+        </div>
+        <div class="breakdown">
+          <div class="breakdown-heading"><strong>Où va votre chiffre d’affaires</strong><span>ESTIMATION / MOIS</span></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-variable"></span><span>Frais variables</span><strong>{{ formatEuro(metrics().variableCosts) }}</strong></div>
+          <div class="breakdown-track"><span class="track-variable" [style.width.%]="metrics().variableShare"></span></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-social"></span><span>Cotisations</span><strong>{{ formatEuro(metrics().socialContributions) }}</strong></div>
+          <div class="breakdown-track"><span class="track-social" [style.width.%]="metrics().socialShare"></span></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-fixed"></span><span>Frais fixes</span><strong>{{ formatEuro(metrics().fixedCosts) }}</strong></div>
+          <div class="breakdown-track"><span class="track-fixed" [style.width.%]="metrics().fixedShare"></span></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-net"></span><span>Revenu disponible</span><strong>{{ formatEuro(metrics().netIncome) }}</strong></div>
+          <div class="breakdown-track"><span class="track-net" [style.width.%]="metrics().netShare"></span></div>
+        </div>
+        <div class="annual-strip">
+          <div><span>CA annualisé</span><strong>{{ formatEuro(metrics().annualTurnover) }}</strong></div>
+          <div><span>Revenu net annualisé</span><strong>{{ formatEuro(metrics().annualNetIncome) }}</strong></div>
+        </div>
+        <div class="reserve-result"><span>Réserve conseillée <small>· {{ reserveMonths() }} mois</small></span><strong>{{ formatEuro(metrics().reserve) }}</strong></div>
+        <button class="export-button" type="button" (click)="exportCsv()"><span aria-hidden="true">↓</span> Exporter la simulation en CSV</button>
+      </aside>
+    </section>
+
+    <section class="reading-guide" id="reperes" aria-labelledby="guide-title">
+      <div class="guide-heading"><span class="section-index">LIRE VOTRE SIMULATION</span><h2 id="guide-title">Des repères pour décider.</h2></div>
+      <div class="guide-items">
+        <article><span>01</span><div><h3>Le chiffre d’affaires à viser</h3><p>Votre objectif net et les frais fixes sont rapportés à la part du CA qui reste après charges variables et cotisations.</p></div></article>
+        <article><span>02</span><div><h3>Le seuil de rentabilité</h3><p>Le niveau de CA à partir duquel les frais fixes du mois sont couverts. Il ne comprend pas votre rémunération.</p></div></article>
+        <article><span>03</span><div><h3>La réserve conseillée</h3><p>Un repère de trésorerie basé sur les frais fixes et le revenu souhaité. Ajustez la durée selon votre saisonnalité.</p></div></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer"><span>CAP PILOTAGE <span aria-hidden="true">·</span> OUTIL DE SIMULATION</span><span>Estimation indicative, à confronter à votre situation réelle.</span></footer>
+  <div class="mobile-result" aria-live="polite" aria-atomic="true"><span>{{ mode() === 'target' ? 'CA à viser' : 'Revenu net estimé' }}</span><strong>{{ formatEuro(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</strong></div>
+</div>
