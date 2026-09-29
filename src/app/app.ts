@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 type CalculationMode = 'target' | 'forecast';
 type NumericField = 'targetNet' | 'monthlyTurnover' | 'fixedCosts' | 'variableRate' | 'socialRate' | 'reserveMonths';
@@ -20,20 +22,42 @@ interface CalculationMetrics {
   retainedRate: number;
 }
 
+interface SavedSimulation {
+  id: number;
+  name: string;
+  mode: CalculationMode;
+  targetNet: number;
+  monthlyTurnover: number;
+  fixedCosts: number;
+  variableRate: number;
+  socialRate: number;
+  reserveMonths: number;
+  savedAt: string;
+}
+
+type NewSimulation = Omit<SavedSimulation, 'id'>;
+
+const SIMULATIONS_URL = 'http://localhost:3000/simulations';
+
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App {
+export class App implements OnInit {
+  private readonly http = inject(HttpClient);
+  private readonly platformId = inject(PLATFORM_ID);
   readonly mode = signal<CalculationMode>('target');
-  readonly targetNet = signal(2800);
-  readonly monthlyTurnover = signal(7000);
-  readonly fixedCosts = signal(850);
+  readonly targetNet = signal(1_200_000);
+  readonly monthlyTurnover = signal(3_000_000);
+  readonly fixedCosts = signal(450_000);
   readonly variableRate = signal(12);
-  readonly socialRate = signal(22);
+  readonly socialRate = signal(15);
   readonly reserveMonths = signal(3);
+  readonly savedSimulations = signal<SavedSimulation[]>([]);
+  readonly saving = signal(false);
+  readonly saveMessage = signal('');
 
   readonly metrics = computed<CalculationMetrics>(() => {
     const variableRate = this.clamp(this.variableRate() / 100, 0, 0.8);
@@ -47,6 +71,7 @@ export class App {
     const variableCosts = turnover * variableRate;
     const socialContributions = turnover * socialRate;
     const netIncome = turnover - variableCosts - socialContributions - fixedCosts;
+    const reserveIncome = this.mode() === 'target' ? target : Math.max(0, netIncome);
     const fixedShare = turnover > 0 ? fixedCosts / turnover * 100 : 0;
 
     return {
@@ -58,7 +83,7 @@ export class App {
       breakEven: fixedCosts / retainedRate,
       annualTurnover: turnover * 12,
       annualNetIncome: netIncome * 12,
-      reserve: (target + fixedCosts) * this.reserveMonths(),
+      reserve: (reserveIncome + fixedCosts) * this.reserveMonths(),
       variableShare: variableRate * 100,
       socialShare: socialRate * 100,
       fixedShare,
@@ -66,6 +91,12 @@ export class App {
       retainedRate,
     };
   });
+
+  ngOnInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadSimulations();
+    }
+  }
 
   setMode(mode: CalculationMode): void {
     this.mode.set(mode);
@@ -86,13 +117,73 @@ export class App {
   }
 
   reset(): void {
-    this.targetNet.set(2800);
-    this.monthlyTurnover.set(7000);
-    this.fixedCosts.set(850);
+    this.targetNet.set(1_200_000);
+    this.monthlyTurnover.set(3_000_000);
+    this.fixedCosts.set(450_000);
     this.variableRate.set(12);
-    this.socialRate.set(22);
+    this.socialRate.set(15);
     this.reserveMonths.set(3);
     this.mode.set('target');
+  }
+
+  saveSimulation(): void {
+    const simulation: NewSimulation = {
+      name: `${this.mode() === 'target' ? 'Objectif' : 'Prévision'} · ${this.formatAriary(this.mode() === 'target' ? this.targetNet() : this.monthlyTurnover())}`,
+      mode: this.mode(),
+      targetNet: this.targetNet(),
+      monthlyTurnover: this.monthlyTurnover(),
+      fixedCosts: this.fixedCosts(),
+      variableRate: this.variableRate(),
+      socialRate: this.socialRate(),
+      reserveMonths: this.reserveMonths(),
+      savedAt: new Date().toISOString(),
+    };
+
+    this.saving.set(true);
+    this.saveMessage.set('');
+    this.http.post<SavedSimulation>(SIMULATIONS_URL, simulation).subscribe({
+      next: (saved) => {
+        this.savedSimulations.update((items) => [saved, ...items]);
+        this.saving.set(false);
+        this.saveMessage.set('Simulation sauvegardée.');
+      },
+      error: () => {
+        this.saving.set(false);
+        this.saveMessage.set('Sauvegarde impossible. Vérifiez que JSON Server est lancé sur le port 3000.');
+      },
+    });
+  }
+
+  loadSimulation(simulation: SavedSimulation): void {
+    this.mode.set(simulation.mode);
+    this.targetNet.set(simulation.targetNet);
+    this.monthlyTurnover.set(simulation.monthlyTurnover);
+    this.fixedCosts.set(simulation.fixedCosts);
+    this.variableRate.set(simulation.variableRate);
+    this.socialRate.set(simulation.socialRate);
+    this.reserveMonths.set(simulation.reserveMonths);
+    this.saveMessage.set('Simulation chargée.');
+  }
+
+  deleteSimulation(simulation: SavedSimulation): void {
+    this.http.delete(`${SIMULATIONS_URL}/${simulation.id}`).subscribe({
+      next: () => {
+        this.savedSimulations.update((items) => items.filter((item) => item.id !== simulation.id));
+        this.saveMessage.set('Simulation supprimée.');
+      },
+      error: () => this.saveMessage.set('Suppression impossible. Vérifiez que JSON Server est lancé.'),
+    });
+  }
+
+  formatSavedDate(value: string): string {
+    return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
+  }
+
+  private loadSimulations(): void {
+    this.http.get<SavedSimulation[]>(SIMULATIONS_URL).subscribe({
+      next: (simulations) => this.savedSimulations.set(simulations.sort((a, b) => b.savedAt.localeCompare(a.savedAt))),
+      error: () => this.saveMessage.set('Lancez JSON Server pour activer les sauvegardes.'),
+    });
   }
 
   exportCsv(): void {
@@ -100,13 +191,14 @@ export class App {
     const rows = [
       ['Indicateur', 'Valeur'],
       ['Mode', this.mode() === 'target' ? 'Objectif de revenu net' : 'Chiffre d’affaires prévu'],
-      ['Chiffre d’affaires mensuel estimé', result.turnover.toFixed(2)],
-      ['Revenu net mensuel estimé', result.netIncome.toFixed(2)],
-      ['Seuil de rentabilité mensuel', result.breakEven.toFixed(2)],
-      ['Frais fixes mensuels', result.fixedCosts.toFixed(2)],
-      ['Frais variables mensuels', result.variableCosts.toFixed(2)],
-      ['Cotisations estimées', result.socialContributions.toFixed(2)],
-      ['Réserve conseillée', result.reserve.toFixed(2)],
+      ['Devise', 'MGA - Ariary'],
+      ['Chiffre d’affaires mensuel estimé', result.turnover.toFixed(0)],
+      ['Revenu net mensuel estimé', result.netIncome.toFixed(0)],
+      ['Seuil de rentabilité mensuel', result.breakEven.toFixed(0)],
+      ['Frais fixes mensuels', result.fixedCosts.toFixed(0)],
+      ['Frais variables mensuels', result.variableCosts.toFixed(0)],
+      ['Cotisations estimées', result.socialContributions.toFixed(0)],
+      ['Réserve conseillée', result.reserve.toFixed(0)],
       ['Taux de frais variables', `${this.variableRate()} %`],
       ['Taux de cotisations', `${this.socialRate()} %`],
       ['Durée de réserve', `${this.reserveMonths()} mois`],
@@ -122,9 +214,9 @@ export class App {
     URL.revokeObjectURL(url);
   }
 
-  formatEuro(value: number): string {
+  formatAriary(value: number): string {
     return new Intl.NumberFormat('fr-FR', {
-      style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
+      style: 'currency', currency: 'MGA', maximumFractionDigits: 0,
     }).format(value);
   }
 

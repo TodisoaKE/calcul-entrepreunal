@@ -1,59 +1,34 @@
-# CalculEntrepreunal
+# Cap Pilotage
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.2.
+Mini-calculateur de pilotage entrepreneurial en ariary (MGA), construit avec Angular 21. Le tableau de bord est responsive et propose une simulation par objectif de revenu ou par chiffre d’affaires prévu.
 
-## Development server
-
-To start a local development server, run:
+## Démarrage
 
 ```bash
-ng serve
+npm install
+npm run dev
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+L’application Angular est disponible sur `http://localhost:4200/` et JSON Server sur `http://localhost:3000/`. `npm run start` lance seulement Angular; `npm run api` lance seulement l’API de sauvegarde.
 
-## Code scaffolding
+Sous Windows PowerShell, si la politique d’exécution bloque `npm.ps1`, utilisez `npm.cmd run dev`.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Les simulations sont enregistrées dans `db.json`, dans la collection `simulations`. Depuis l’interface, il est possible de créer un instantané, de le recharger après actualisation et de le supprimer.
+
+## Calculs
+
+- En mode objectif, le chiffre d’affaires cible est calculé à partir du revenu net souhaité, des frais fixes et des taux estimés de frais variables et de cotisations.
+- En mode prévision, le revenu net estimé est le chiffre d’affaires diminué des frais variables, des cotisations estimées et des frais fixes.
+- Le tableau affiche aussi le seuil de rentabilité, la projection annualisée et une réserve de trésorerie indicative.
+- L’export CSV utilise le séparateur `;` et la devise MGA.
+
+Les taux sont modifiables et servent uniquement à la simulation. La TVA, l’impôt sur le revenu et les règles propres à chaque statut ne sont pas modélisés; validez les paramètres avec un professionnel.
+
+## Développement et tests
 
 ```bash
-ng generate component component-name
+npm run build
+npm test -- --watch=false
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+JSON Server est une API de développement sans authentification. `db.json` convient à un prototype local, pas à un déploiement multi-utilisateur ou à des données sensibles.

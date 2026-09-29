@@ -50,17 +50,17 @@
           @if (mode() === 'target') {
             <label class="field-row" for="target-net">
               <span class="field-copy"><strong>Revenu net souhaité</strong><small>Après frais et cotisations</small></span>
-              <span class="input-wrap"><input id="target-net" type="number" min="0" step="100" [value]="targetNet()" (input)="updateInput('targetNet', $event)" inputmode="decimal" /><span>€ / mois</span></span>
+              <span class="input-wrap"><input id="target-net" type="number" min="0" step="50000" [value]="targetNet()" (input)="updateInput('targetNet', $event)" inputmode="numeric" /><span>Ar / mois</span></span>
             </label>
           } @else {
             <label class="field-row" for="monthly-turnover">
               <span class="field-copy"><strong>Chiffre d’affaires prévu</strong><small>Hors TVA, encaissé par mois</small></span>
-              <span class="input-wrap"><input id="monthly-turnover" type="number" min="0" step="100" [value]="monthlyTurnover()" (input)="updateInput('monthlyTurnover', $event)" inputmode="decimal" /><span>€ / mois</span></span>
+              <span class="input-wrap"><input id="monthly-turnover" type="number" min="0" step="50000" [value]="monthlyTurnover()" (input)="updateInput('monthlyTurnover', $event)" inputmode="numeric" /><span>Ar / mois</span></span>
             </label>
           }
           <label class="field-row" for="fixed-costs">
             <span class="field-copy"><strong>Frais fixes</strong><small>Loyer, assurances, outils…</small></span>
-            <span class="input-wrap"><input id="fixed-costs" type="number" min="0" step="50" [value]="fixedCosts()" (input)="updateInput('fixedCosts', $event)" inputmode="decimal" /><span>€ / mois</span></span>
+            <span class="input-wrap"><input id="fixed-costs" type="number" min="0" step="10000" [value]="fixedCosts()" (input)="updateInput('fixedCosts', $event)" inputmode="numeric" /><span>Ar / mois</span></span>
           </label>
           <div class="field-row rate-row">
             <label class="field-copy" for="variable-rate"><strong>Frais variables</strong><small>Achats, commissions, livraison…</small></label>
@@ -77,36 +77,50 @@
           </div>
         </div>
         <div class="assumption-note"><span class="note-mark" aria-hidden="true">i</span><p>Les taux sont des estimations : adaptez-les à votre activité et à votre régime. La TVA et l’impôt sur le revenu ne sont pas inclus.</p></div>
+        <section class="save-panel" aria-labelledby="saved-title">
+          <div class="saved-heading"><div><span class="section-index">VOS DONNÉES</span><h3 id="saved-title">Mes sauvegardes</h3></div><span class="saved-count">{{ savedSimulations().length }}</span></div>
+          <button class="save-button" type="button" (click)="saveSimulation()" [disabled]="saving()"><span aria-hidden="true">↓</span> {{ saving() ? 'Sauvegarde…' : 'Sauvegarder cette simulation' }}</button>
+          @if (saveMessage()) { <p class="save-message" role="status">{{ saveMessage() }}</p> }
+          @if (savedSimulations().length > 0) {
+            <ul class="saved-list">
+              @for (simulation of savedSimulations(); track simulation.id) {
+                <li><button class="saved-item" type="button" (click)="loadSimulation(simulation)"><strong>{{ simulation.name }}</strong><small>{{ formatSavedDate(simulation.savedAt) }}</small></button><button class="delete-saved" type="button" (click)="deleteSimulation(simulation)" [attr.aria-label]="'Supprimer ' + simulation.name" title="Supprimer">×</button></li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-saves">Aucune simulation enregistrée.</p>
+          }
+        </section>
       </div>
 
       <aside class="results" aria-label="Résultats de la simulation" aria-live="polite" aria-atomic="true">
         <div class="result-topline"><span class="result-kicker">{{ mode() === 'target' ? 'CHIFFRE D’AFFAIRES À VISER' : 'REVENU NET ESTIMÉ' }}</span><span class="result-period">PAR MOIS <span aria-hidden="true">↗</span></span></div>
-        <p class="result-number">{{ formatEuro(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</p>
+        <p class="result-number">{{ formatAriary(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</p>
         <p class="result-caption">{{ mode() === 'target' ? 'pour atteindre votre objectif de revenu net' : 'après frais fixes, frais variables et cotisations' }}</p>
         @if (variableRate() + socialRate() >= 95) {
           <p class="warning-message" role="status">Attention : vos taux de charges laissent très peu de marge pour couvrir vos frais fixes.</p>
         }
         <div class="result-divider"></div>
         <div class="metric-pair">
-          <div><span>Seuil de rentabilité</span><strong>{{ formatEuro(metrics().breakEven) }}<small> / mois</small></strong></div>
-          <div><span>Revenu net estimé</span><strong>{{ formatEuro(metrics().netIncome) }}<small> / mois</small></strong></div>
+          <div><span>Seuil de rentabilité</span><strong>{{ formatAriary(metrics().breakEven) }}<small> / mois</small></strong></div>
+          <div><span>Revenu net estimé</span><strong>{{ formatAriary(metrics().netIncome) }}<small> / mois</small></strong></div>
         </div>
         <div class="breakdown">
           <div class="breakdown-heading"><strong>Où va votre chiffre d’affaires</strong><span>ESTIMATION / MOIS</span></div>
-          <div class="breakdown-row"><span class="breakdown-dot dot-variable"></span><span>Frais variables</span><strong>{{ formatEuro(metrics().variableCosts) }}</strong></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-variable"></span><span>Frais variables</span><strong>{{ formatAriary(metrics().variableCosts) }}</strong></div>
           <div class="breakdown-track"><span class="track-variable" [style.width.%]="metrics().variableShare"></span></div>
-          <div class="breakdown-row"><span class="breakdown-dot dot-social"></span><span>Cotisations</span><strong>{{ formatEuro(metrics().socialContributions) }}</strong></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-social"></span><span>Cotisations</span><strong>{{ formatAriary(metrics().socialContributions) }}</strong></div>
           <div class="breakdown-track"><span class="track-social" [style.width.%]="metrics().socialShare"></span></div>
-          <div class="breakdown-row"><span class="breakdown-dot dot-fixed"></span><span>Frais fixes</span><strong>{{ formatEuro(metrics().fixedCosts) }}</strong></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-fixed"></span><span>Frais fixes</span><strong>{{ formatAriary(metrics().fixedCosts) }}</strong></div>
           <div class="breakdown-track"><span class="track-fixed" [style.width.%]="metrics().fixedShare"></span></div>
-          <div class="breakdown-row"><span class="breakdown-dot dot-net"></span><span>Revenu disponible</span><strong>{{ formatEuro(metrics().netIncome) }}</strong></div>
+          <div class="breakdown-row"><span class="breakdown-dot dot-net"></span><span>Revenu disponible</span><strong>{{ formatAriary(metrics().netIncome) }}</strong></div>
           <div class="breakdown-track"><span class="track-net" [style.width.%]="metrics().netShare"></span></div>
         </div>
         <div class="annual-strip">
-          <div><span>CA annualisé</span><strong>{{ formatEuro(metrics().annualTurnover) }}</strong></div>
-          <div><span>Revenu net annualisé</span><strong>{{ formatEuro(metrics().annualNetIncome) }}</strong></div>
+          <div><span>CA annualisé</span><strong>{{ formatAriary(metrics().annualTurnover) }}</strong></div>
+          <div><span>Revenu net annualisé</span><strong>{{ formatAriary(metrics().annualNetIncome) }}</strong></div>
         </div>
-        <div class="reserve-result"><span>Réserve conseillée <small>· {{ reserveMonths() }} mois</small></span><strong>{{ formatEuro(metrics().reserve) }}</strong></div>
+        <div class="reserve-result"><span>Réserve conseillée <small>· {{ reserveMonths() }} mois</small></span><strong>{{ formatAriary(metrics().reserve) }}</strong></div>
         <button class="export-button" type="button" (click)="exportCsv()"><span aria-hidden="true">↓</span> Exporter la simulation en CSV</button>
       </aside>
     </section>
@@ -122,5 +136,5 @@
   </main>
 
   <footer class="footer"><span>CAP PILOTAGE <span aria-hidden="true">·</span> OUTIL DE SIMULATION</span><span>Estimation indicative, à confronter à votre situation réelle.</span></footer>
-  <div class="mobile-result" aria-live="polite" aria-atomic="true"><span>{{ mode() === 'target' ? 'CA à viser' : 'Revenu net estimé' }}</span><strong>{{ formatEuro(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</strong></div>
+  <div class="mobile-result" aria-live="polite" aria-atomic="true"><span>{{ mode() === 'target' ? 'CA à viser' : 'Revenu net estimé' }}</span><strong>{{ formatAriary(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</strong></div>
 </div>

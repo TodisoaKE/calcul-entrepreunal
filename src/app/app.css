@@ -89,6 +89,25 @@ h1 { margin-bottom: 15px; font-family: 'DM Serif Display', Georgia, serif; font-
 .assumption-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; padding: 12px 12px 10px; background: #f4f7f3; }
 .note-mark { flex: 0 0 15px; width: 15px; height: 15px; border: 1px solid #a9b8ac; border-radius: 50%; color: #587467; font: 10px Georgia, serif; line-height: 14px; text-align: center; }
 .assumption-note p { margin: 0; color: #707d75; font-size: 10px; line-height: 1.55; }
+.save-panel { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+.saved-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.saved-heading .section-index { margin-bottom: 5px; }
+.saved-heading h3 { margin: 0; font-family: 'DM Serif Display', Georgia, serif; font-size: 20px; font-weight: 400; }
+.saved-count { min-width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #edf3ed; color: var(--green); font-size: 11px; }
+.save-button { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--green); border-radius: 3px; background: var(--green); color: white; font-size: 11px; font-weight: 600; cursor: pointer; }
+.save-button:hover:not(:disabled) { background: #23604f; }
+.save-button:disabled { opacity: .6; cursor: wait; }
+.save-button span { color: var(--mint); font-size: 16px; }
+.save-message { margin: 9px 0 0; color: #557362; font-size: 10px; line-height: 1.5; }
+.empty-saves { margin: 12px 0 0; color: #89948d; font-size: 10px; }
+.saved-list { display: grid; gap: 1px; margin: 10px 0 0; padding: 0; list-style: none; }
+.saved-list li { min-width: 0; display: flex; align-items: center; border-top: 1px solid #edf0ec; }
+.saved-item { min-width: 0; flex: 1; display: grid; gap: 4px; padding: 10px 4px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.saved-item:hover strong { color: #26705a; }
+.saved-item strong { overflow: hidden; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.saved-item small { color: #859088; font-size: 9px; }
+.delete-saved { width: 34px; height: 34px; flex: 0 0 34px; border: 0; border-radius: 3px; background: transparent; color: #8d9790; font-size: 20px; cursor: pointer; }
+.delete-saved:hover { background: #fbece8; color: #a4422e; }
 
 .results { position: sticky; top: 18px; overflow: hidden; padding: 26px 26px 0; border-radius: 4px; background: #153b34; color: #f8f8f1; animation: enter 500ms 100ms ease-out both; }
 .result-topline { display: flex; justify-content: space-between; gap: 10px; color: #b4c9be; }
@@ -177,6 +196,7 @@ input:focus-visible { outline-color: #548777; }
 	.mode-arrow { font-size: 15px; }
 	.workspace { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 	.assumptions { padding: 20px 17px 15px; }
+	.save-panel { margin-top: 17px; }
 	.section-heading h2 { font-size: 25px; }
 	.field-row { min-height: 72px; gap: 8px; }
 	.field-copy strong, .reserve-label strong { font-size: 11px; }
