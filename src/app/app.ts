@@ -1,8 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { Session } from '@supabase/supabase-js';
+import { CalculationMode, FamilyDataService, NewSimulation, SavedSimulation } from './family-data.service';
 
-type CalculationMode = 'target' | 'forecast';
 type NumericField = 'targetNet' | 'monthlyTurnover' | 'fixedCosts' | 'variableRate' | 'socialRate' | 'reserveMonths';
 
 interface CalculationMetrics {
@@ -22,32 +22,23 @@ interface CalculationMetrics {
   retainedRate: number;
 }
 
-interface SavedSimulation {
-  id: number;
-  name: string;
-  mode: CalculationMode;
-  targetNet: number;
-  monthlyTurnover: number;
-  fixedCosts: number;
-  variableRate: number;
-  socialRate: number;
-  reserveMonths: number;
-  savedAt: string;
-}
-
-type NewSimulation = Omit<SavedSimulation, 'id'>;
-
-const SIMULATIONS_URL = 'http://localhost:3000/simulations';
-
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App implements OnInit {
-  private readonly http = inject(HttpClient);
+export class App implements OnInit, OnDestroy {
+  private readonly familyData = inject(FamilyDataService);
   private readonly platformId = inject(PLATFORM_ID);
+  private stopAuthListener: (() => void) | null = null;
+  readonly configured = this.familyData.configured;
+  readonly authLoading = signal(true);
+  readonly session = signal<Session | null>(null);
+  readonly loginEmail = signal('');
+  readonly loginPassword = signal('');
+  readonly loginBusy = signal(false);
+  readonly authError = signal('');
   readonly mode = signal<CalculationMode>('target');
   readonly targetNet = signal(1_200_000);
   readonly monthlyTurnover = signal(3_000_000);
@@ -93,8 +84,74 @@ export class App implements OnInit {
   });
 
   ngOnInit(): void {
-    if (isPlatformBrowser(this.platformId)) {
-      this.loadSimulations();
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!this.configured) {
+      this.authLoading.set(false);
+      return;
+    }
+    this.stopAuthListener = this.familyData.onAuthStateChange((session) => {
+      this.session.set(session);
+      if (!session) this.savedSimulations.set([]);
+    });
+    void this.restoreSession();
+  }
+
+  ngOnDestroy(): void {
+    this.stopAuthListener?.();
+  }
+
+  updateLogin(field: 'email' | 'password', event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (field === 'email') this.loginEmail.set(value);
+    else this.loginPassword.set(value);
+  }
+
+  async submitLogin(event: Event): Promise<void> {
+    event.preventDefault();
+    this.loginBusy.set(true);
+    this.authError.set('');
+    try {
+      const session = await this.familyData.signIn(this.loginEmail().trim(), this.loginPassword());
+      this.session.set(session);
+      await this.refreshSimulations();
+      this.loginPassword.set('');
+    } catch {
+      this.authError.set('Connexion impossible. Vérifie ton adresse et ton mot de passe, ou demande un accès à la personne qui administre le projet.');
+    } finally {
+      this.loginBusy.set(false);
+      this.authLoading.set(false);
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.familyData.signOut();
+      this.session.set(null);
+      this.savedSimulations.set([]);
+      this.reset();
+    } catch {
+      this.authError.set('La déconnexion a échoué. Réessaie.');
+    }
+  }
+
+  private async restoreSession(): Promise<void> {
+    try {
+      const session = await this.familyData.getSession();
+      this.session.set(session);
+      if (session) await this.refreshSimulations();
+    } catch {
+      this.authError.set('Connexion au service de données impossible. Vérifie la configuration Supabase.');
+    } finally {
+      this.authLoading.set(false);
+    }
+  }
+
+  private async refreshSimulations(): Promise<void> {
+    try {
+      this.savedSimulations.set(await this.familyData.listSimulations());
+      this.saveMessage.set('');
+    } catch {
+      this.saveMessage.set('Impossible de charger les simulations. Vérifie le schéma SQL et les règles d’accès Supabase.');
     }
   }
 
@@ -141,17 +198,13 @@ export class App implements OnInit {
 
     this.saving.set(true);
     this.saveMessage.set('');
-    this.http.post<SavedSimulation>(SIMULATIONS_URL, simulation).subscribe({
-      next: (saved) => {
-        this.savedSimulations.update((items) => [saved, ...items]);
-        this.saving.set(false);
-        this.saveMessage.set('Simulation sauvegardée.');
-      },
-      error: () => {
-        this.saving.set(false);
-        this.saveMessage.set('Sauvegarde impossible. Vérifiez que JSON Server est lancé sur le port 3000.');
-      },
-    });
+    this.saving.set(true);
+    void this.familyData.saveSimulation(simulation).then((saved) => {
+      this.savedSimulations.update((items) => [saved, ...items]);
+      this.saveMessage.set('Simulation sauvegardée pour la famille.');
+    }).catch(() => {
+      this.saveMessage.set('Sauvegarde impossible. Vérifie ta connexion et les règles d’accès Supabase.');
+    }).finally(() => this.saving.set(false));
   }
 
   loadSimulation(simulation: SavedSimulation): void {
@@ -166,24 +219,16 @@ export class App implements OnInit {
   }
 
   deleteSimulation(simulation: SavedSimulation): void {
-    this.http.delete(`${SIMULATIONS_URL}/${simulation.id}`).subscribe({
-      next: () => {
-        this.savedSimulations.update((items) => items.filter((item) => item.id !== simulation.id));
-        this.saveMessage.set('Simulation supprimée.');
-      },
-      error: () => this.saveMessage.set('Suppression impossible. Vérifiez que JSON Server est lancé.'),
+    void this.familyData.deleteSimulation(simulation.id).then(() => {
+      this.savedSimulations.update((items) => items.filter((item) => item.id !== simulation.id));
+      this.saveMessage.set('Simulation supprimée.');
+    }).catch(() => {
+      this.saveMessage.set('Suppression impossible. Vérifie les règles d’accès Supabase.');
     });
   }
 
   formatSavedDate(value: string): string {
     return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
-  }
-
-  private loadSimulations(): void {
-    this.http.get<SavedSimulation[]>(SIMULATIONS_URL).subscribe({
-      next: (simulations) => this.savedSimulations.set(simulations.sort((a, b) => b.savedAt.localeCompare(a.savedAt))),
-      error: () => this.saveMessage.set('Lancez JSON Server pour activer les sauvegardes.'),
-    });
   }
 
   exportCsv(): void {

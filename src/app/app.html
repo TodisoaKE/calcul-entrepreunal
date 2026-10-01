@@ -1,4 +1,47 @@
 <div class="app-shell">
+  @if (!configured) {
+    <main class="auth-page">
+      <section class="auth-card" aria-labelledby="setup-title">
+        <a class="brand auth-brand" href="#accueil" aria-label="Cap Pilotage">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>cap<span class="brand-light">pilotage</span></span>
+        </a>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> ACCÈS FAMILIAL PRIVÉ</p>
+        <h1 id="setup-title">Connexion sécurisée à préparer</h1>
+        <p class="auth-description">Le calculateur n’est pas accessible tant que le projet Supabase n’est pas configuré. Les identifiants de connexion ne sont pas publics.</p>
+        <div class="setup-steps">
+          <p><strong>1.</strong> Crée un projet Supabase et applique le script SQL fourni dans <code>supabase/schema.sql</code>.</p>
+          <p><strong>2.</strong> Désactive les inscriptions publiques, puis crée un compte par proche dans Auth.</p>
+          <p><strong>3.</strong> Ajoute les identifiants Auth des proches dans <code>family_members</code> avec le SQL du README.</p>
+          <p><strong>4.</strong> Ajoute l’URL Supabase et la clé publishable dans <code>src/app/supabase.config.ts</code>.</p>
+        </div>
+        <p class="auth-footnote">Utilise uniquement la clé publishable / anon. Ne mets jamais une clé <code>service_role</code> dans l’application.</p>
+      </section>
+    </main>
+  } @else if (authLoading()) {
+    <main class="auth-page" aria-live="polite"><p class="loading-message">Vérification de la session…</p></main>
+  } @else if (!session()) {
+    <main class="auth-page">
+      <section class="auth-card" aria-labelledby="login-title">
+        <a class="brand auth-brand" href="#accueil" aria-label="Cap Pilotage">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>cap<span class="brand-light">pilotage</span></span>
+        </a>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> ESPACE FAMILIAL PRIVÉ</p>
+        <h1 id="login-title">Connecte-toi<br />à Cap Pilotage.</h1>
+        <p class="auth-description">Les simulations sont partagées entre les membres autorisés de la famille.</p>
+        <form class="login-form" (submit)="submitLogin($event)">
+          <label for="login-email">Adresse e-mail</label>
+          <input id="login-email" type="email" autocomplete="username" [value]="loginEmail()" (input)="updateLogin('email', $event)" required />
+          <label for="login-password">Mot de passe</label>
+          <input id="login-password" type="password" autocomplete="current-password" [value]="loginPassword()" (input)="updateLogin('password', $event)" required />
+          @if (authError()) { <p class="auth-error" role="alert">{{ authError() }}</p> }
+          <button class="login-button" type="submit" [disabled]="loginBusy()"><span aria-hidden="true">↗</span> {{ loginBusy() ? 'Connexion…' : 'Se connecter' }}</button>
+        </form>
+        <p class="auth-footnote">Pas encore de compte ? Demande à la personne qui administre l’espace de t’en créer un.</p>
+      </section>
+    </main>
+  } @else {
   <header class="topbar">
     <a class="brand" href="#accueil" aria-label="Cap Pilotage, accueil">
       <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -8,9 +51,7 @@
       <a class="nav-active" href="#simulateur">Simulateur</a>
       <a href="#reperes">Comprendre les résultats</a>
     </nav>
-    <button class="reset-button" type="button" (click)="reset()">
-      <span aria-hidden="true">↺</span> Réinitialiser
-    </button>
+    <div class="account-actions"><span class="account-email">{{ session()?.user?.email }}</span><button class="reset-button" type="button" (click)="reset()"><span aria-hidden="true">↺</span> Réinitialiser</button><button class="logout-button" type="button" (click)="logout()">Quitter</button></div>
   </header>
 
   <main id="accueil">
@@ -137,4 +178,5 @@
 
   <footer class="footer"><span>CAP PILOTAGE <span aria-hidden="true">·</span> OUTIL DE SIMULATION</span><span>Estimation indicative, à confronter à votre situation réelle.</span></footer>
   <div class="mobile-result" aria-live="polite" aria-atomic="true"><span>{{ mode() === 'target' ? 'CA à viser' : 'Revenu net estimé' }}</span><strong>{{ formatAriary(mode() === 'target' ? metrics().turnover : metrics().netIncome) }}</strong></div>
+  }
 </div>

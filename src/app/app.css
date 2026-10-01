@@ -15,6 +15,10 @@
 .app-shell { min-height: 100vh; padding: 0 32px 30px; }
 .topbar, main, .footer { width: min(100%, 1160px); margin-inline: auto; }
 .topbar { height: 78px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #dfe5df; }
+.account-actions { display: flex; align-items: center; gap: 9px; }
+.account-email { max-width: 190px; overflow: hidden; color: #66736c; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.logout-button { min-height: 36px; padding: 8px 11px; border: 1px solid #d9e0da; border-radius: 4px; background: transparent; color: #53665d; font-size: 11px; cursor: pointer; }
+.logout-button:hover { border-color: #d58771; background: #fbefea; color: #874736; }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-size: 15px; font-weight: 700; }
 .brand-light { margin-left: 4px; color: #6c7973; font-weight: 400; }
 .brand-mark { width: 27px; height: 27px; display: flex; align-items: end; justify-content: center; gap: 3px; padding: 6px 5px; border-radius: 8px 8px 8px 2px; background: var(--green); transform: rotate(-4deg); }
@@ -160,6 +164,28 @@ h1 { margin-bottom: 15px; font-family: 'DM Serif Display', Georgia, serif; font-
 .footer > span:first-child span { color: var(--coral); }
 .mobile-result { display: none; }
 
+.auth-page { min-height: calc(100vh - 30px); display: grid; place-items: center; padding: 36px 0; }
+.auth-card { width: min(100%, 520px); padding: clamp(24px, 6vw, 50px); border: 1px solid #dfe5df; border-radius: 4px; background: rgba(255,255,255,.92); box-shadow: 0 22px 60px #2443360c; animation: enter 450ms ease-out both; }
+.auth-brand { margin-bottom: 42px; }
+.auth-card .eyebrow { margin-bottom: 14px; }
+.auth-card h1 { margin-bottom: 14px; font-size: clamp(34px, 7vw, 48px); line-height: 1.02; }
+.auth-description { margin-bottom: 24px; color: #65726b; font-size: 13px; line-height: 1.65; }
+.setup-steps { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.setup-steps p { display: grid; grid-template-columns: 25px 1fr; gap: 8px; margin: 0; padding: 13px 0; border-bottom: 1px solid var(--line); color: #58675f; font-size: 11px; line-height: 1.6; }
+.setup-steps strong { color: #bd6b55; font-family: 'DM Mono', monospace; }
+.setup-steps code, .auth-footnote code { padding: 2px 4px; background: #edf3ed; color: #315849; font-family: 'DM Mono', monospace; font-size: .92em; overflow-wrap: anywhere; }
+.auth-footnote { margin: 18px 0 0; color: #78847d; font-size: 10px; line-height: 1.65; }
+.loading-message { color: #5e7167; font-size: 13px; }
+.login-form { display: grid; gap: 9px; }
+.login-form label { margin-top: 7px; color: #42564d; font-size: 11px; font-weight: 600; }
+.login-form input { width: 100%; min-height: 45px; padding: 10px 12px; border: 1px solid #d8e1d9; border-radius: 3px; background: #fbfcfa; color: var(--ink); font-size: 14px; }
+.login-form input:focus { border-color: #548777; outline: 2px solid #dcebe2; }
+.login-button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 10px; border: 1px solid var(--green); border-radius: 3px; background: var(--green); color: white; font-size: 12px; font-weight: 600; cursor: pointer; }
+.login-button:hover:not(:disabled) { background: #23604f; }
+.login-button:disabled { opacity: .65; cursor: wait; }
+.login-button span { color: var(--coral); font-size: 17px; }
+.auth-error { margin: 5px 0; padding: 10px; border-left: 2px solid #c4624c; background: #fbefea; color: #773e31; font-size: 11px; line-height: 1.5; }
+
 button:focus-visible, a:focus-visible { outline: 2px solid #548777; outline-offset: 3px; }
 input:focus-visible { outline-color: #548777; }
 
@@ -182,8 +208,11 @@ input:focus-visible { outline-color: #548777; }
 	.top-nav { gap: 0; margin-left: auto; margin-right: 13px; }
 	.top-nav a:not(.nav-active) { display: none; }
 	.top-nav .nav-active { font-size: 11px; }
+	.account-actions { gap: 5px; margin-left: auto; }
+	.account-email { display: none; }
 	.reset-button { padding: 8px 9px; font-size: 0; }
 	.reset-button span { margin: 0; font-size: 20px; }
+	.logout-button { min-height: 34px; padding: 7px 8px; font-size: 10px; }
 	.intro { align-items: flex-start; padding: 44px 0 25px; }
 	h1 { font-size: 43px; }
 	.intro-text { max-width: 410px; font-size: 12px; }
@@ -214,6 +243,9 @@ input:focus-visible { outline-color: #548777; }
 	.guide-heading h2 { max-width: none; font-size: 27px; }
 	.guide-items article { padding: 12px 0; }
 	.footer { flex-direction: column; gap: 7px; padding-top: 14px; font-size: 9px; }
+	.auth-page { min-height: calc(100vh - 100px); padding-block: 20px; }
+	.auth-card { padding: 27px 22px; }
+	.auth-brand { margin-bottom: 32px; }
 	.mobile-result { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid #34564d; background: #153b34; color: #eff4ec; box-shadow: 0 -5px 18px #18372d1c; }
 	.mobile-result span { color: #c2d3c9; font-size: 11px; }
 	.mobile-result strong { font-family: 'DM Serif Display', Georgia, serif; font-size: 24px; font-weight: 400; }
